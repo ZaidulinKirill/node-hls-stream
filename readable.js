@@ -35,7 +35,10 @@ class ReadStream extends stream.Readable {
     this.masterPlaylist = null;
     this.mediaPlaylists = [];
     this.counter = 0;
+    this.isDestroyed = false
     this.rawResponseMode = Boolean(options.rawResponse);
+
+    this.playlistTimestamp = null
   }
 
   _INCREMENT() {
@@ -44,6 +47,10 @@ class ReadStream extends stream.Readable {
 
   _DECREMENT() {
     this.counter--;
+  }
+
+  destroy() {
+    this.isDestroyed = true
   }
 
   get consumed() {
@@ -112,6 +119,8 @@ class ReadStream extends stream.Readable {
   }
 
   _updateMediaPlaylist(playlist) {
+    // this.playlistTimestamp
+
     const {mediaPlaylists} = this;
     const oldPlaylistIndex = mediaPlaylists.findIndex(elem => {
       if (elem.uri === playlist.uri) {
@@ -135,10 +144,16 @@ class ReadStream extends stream.Readable {
           segment.key = oldSegment.key;
           segment.map = oldSegment.map;
         } else {
+          segment.timestamp = this.playlistTimestamp
           this._loadSegment(playlist, segment);
+
+          this.playlistTimestamp += segment.duration
         }
       } else {
+        segment.timestamp = this.playlistTimestamp
         this._loadSegment(playlist, segment);
+
+        this.playlistTimestamp += segment.duration
       }
     }
 
@@ -148,7 +163,7 @@ class ReadStream extends stream.Readable {
       mediaPlaylists.push(playlist);
     }
 
-    if (playlist.playlistType === 'VOD' || playlist.endlist) {
+    if (playlist.playlistType === 'VOD' || playlist.endlist || this.isDestroyed) {
       this.state = 'ended';
     } else {
       print(`Wait for at least the target duration before attempting to reload the Playlist file again (${playlist.targetDuration}) sec`);
@@ -205,7 +220,10 @@ class ReadStream extends stream.Readable {
         }
         this._updateMasterPlaylist(playlist);
       } else {
-        // Media Playlist
+        if (!this.playlistTimestamp) {
+          this.playlistTimestamp = new Date().valueOf() / 1000
+        }
+
         playlist.hash = hash;
         this._emitPlaylistEvent(playlist);
         this._updateMediaPlaylist(playlist);

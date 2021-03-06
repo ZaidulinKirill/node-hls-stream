@@ -55,7 +55,7 @@
   },
   "dependencies": {
     "debug": "^4.1.1",
-    "hls-parser": "^0.4.0",
+    "hls-parser": "git+https://github.com/ZaidulinKirill/hls-parser.git",
     "node-fetch": "^2.6.0",
     "through2-parallel": "^0.1.3"
   }
